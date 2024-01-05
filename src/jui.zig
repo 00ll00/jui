@@ -17,7 +17,7 @@ pub usingnamespace types;
 
 pub fn exportAs(comptime name: []const u8, function: anytype) void {
     var z: [name.len]u8 = undefined;
-    for (name) |v, i| z[i] = switch (v) {
+    for (name, 0..) |v, i| z[i] = switch (v) {
         '.' => '_',
         else => v,
     };
@@ -69,7 +69,7 @@ fn writeStackTraceJava(
     if (builtin.strip_debug_info) return error.MissingDebugInfo;
 
     var frame_index: usize = 0;
-    var frames_left: usize = std.math.min(stack_trace.index, stack_trace.instruction_addresses.len);
+    var frames_left: usize = @min(stack_trace.index, stack_trace.instruction_addresses.len);
 
     while (frames_left != 0) : ({
         frames_left -= 1;
@@ -122,7 +122,7 @@ pub fn wrapErrors(function: anytype, args: anytype) splitError(@typeInfo(@TypeOf
                 formatStackTraceJava(err_buf.writer(), ert.*) catch unreachable;
                 err_buf.writer().writeByte(0) catch unreachable;
 
-                env.throwGeneric(@ptrCast([*c]const u8, err_buf.items)) catch unreachable;
+                env.throwGeneric(@as([*c]const u8, @ptrCast(err_buf.items))) catch unreachable;
             } else {
                 var buf: [512]u8 = undefined;
                 var msg = std.fmt.bufPrintZ(&buf, "{s}", .{@errorName(err)}) catch unreachable;
