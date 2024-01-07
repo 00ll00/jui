@@ -764,7 +764,7 @@ pub const JNIEnv = extern struct {
 
         // First get the class object
         var mid = self.interface.GetMethodID(self, cls, "getClass", "()Ljava/lang/Class;");
-        var clsObj = self.interface.CallObjectMethod(self, obj, mid);
+        const clsObj = self.interface.CallObjectMethod(self, obj, mid);
 
         // Now get the class object's class descriptor
         cls = self.getObjectClass(clsObj);
@@ -773,27 +773,27 @@ pub const JNIEnv = extern struct {
         mid = self.interface.GetMethodID(self, cls, "getName", "()Ljava/lang/String;");
 
         // Call the getName() to get a jstring object back
-        var strObj = self.interface.CallObjectMethod(self, clsObj, mid);
+        const strObj = self.interface.CallObjectMethod(self, clsObj, mid);
         return strObj;
     }
 
     /// Handles a known error
     /// Only use this if you're 100% sure an error/exception has occurred
     fn handleKnownError(self: *Self, comptime Set: type) Set {
-        var throwable = self.getPendingException();
+        const throwable = self.getPendingException();
 
-        var name_str = self.getClassNameOfObject(throwable);
+        const name_str = self.getClassNameOfObject(throwable);
 
-        var name = self.interface.GetStringUTFChars(self, name_str, null);
+        const name = self.interface.GetStringUTFChars(self, name_str, null);
         defer self.interface.ReleaseStringUTFChars(self, name_str, name);
 
         var n = std.mem.span(@as([*:0]const u8, @ptrCast(name)));
-        var eon = n[std.mem.lastIndexOf(u8, n, ".").? + 1 ..];
+        const eon = n[std.mem.lastIndexOf(u8, n, ".").? + 1 ..];
 
-        var x = std.hash.Wyhash.hash(0, eon);
+        const x = std.hash.Wyhash.hash(0, eon);
 
         inline for (comptime std.meta.fields(Set)) |err| {
-            var z = std.hash.Wyhash.hash(0, err.name);
+            const z = std.hash.Wyhash.hash(0, err.name);
             if (x == z) {
                 self.clearPendingException();
                 return @field(Set, err.name);
@@ -808,7 +808,7 @@ pub const JNIEnv = extern struct {
 
     /// Gets the JNI version (not the Java version!)
     pub fn getJNIVersion(self: *Self) JNIVersion {
-        var version = self.interface.GetVersion(self);
+        const version = self.interface.GetVersion(self);
         return @as(JNIVersion, @bitCast(version));
     }
 
@@ -834,7 +834,7 @@ pub const JNIEnv = extern struct {
     /// Buffer can be discarded after use
     /// The name is always null as it is a redudant argument
     pub fn defineClass(self: *Self, loader: jobject, buf: []const u8) DefineClassError!jclass {
-        var maybe_class = self.interface.DefineClass(self, null, loader, @as([*c]const jbyte, @ptrCast(buf)), @as(jsize, @intCast(buf.len)));
+        const maybe_class = self.interface.DefineClass(self, null, loader, @as([*c]const jbyte, @ptrCast(buf)), @as(jsize, @intCast(buf.len)));
         return if (maybe_class) |class|
             class
         else
@@ -853,7 +853,7 @@ pub const JNIEnv = extern struct {
 
     /// This function loads a locally-defined class
     pub fn findClass(self: *Self, name: [*:0]const u8) FindClassError!jclass {
-        var maybe_class = self.interface.FindClass(self, name);
+        const maybe_class = self.interface.FindClass(self, name);
         return if (maybe_class) |class|
             class
         else
@@ -895,7 +895,7 @@ pub const JNIEnv = extern struct {
 
     /// Throws a generic java.lang.Excpetion with the specified message
     pub fn throwGeneric(self: *Self, message: [*:0]const u8) !void {
-        var class = try self.findClass("java/lang/Exception");
+        const class = try self.findClass("java/lang/Exception");
         return self.throwNew(class, message);
     }
 
@@ -934,7 +934,7 @@ pub const JNIEnv = extern struct {
 
     /// Create a new reference based on an existing reference
     pub fn newReference(self: *Self, kind: ObjectReferenceKind, reference: jobject) NewReferenceError!jobject {
-        var maybe_reference = switch (kind) {
+        const maybe_reference = switch (kind) {
             .global => self.interface.NewGlobalRef(self, reference),
             .local => self.interface.NewLocalRef(self, reference),
             .weak_global => self.interface.NewWeakGlobalRef(self, reference),
@@ -991,7 +991,7 @@ pub const JNIEnv = extern struct {
     /// Allocates a new Java object without invoking any of the constructors for the object, then returns a reference to the object
     /// NOTE: Objects created with this function are not eligible for finalization
     pub fn allocObject(self: *Self, class: jclass) AllocObjectError!jobject {
-        var maybe_object = self.interface.AllocObject(self, class);
+        const maybe_object = self.interface.AllocObject(self, class);
         return if (maybe_object) |object|
             object
         else
@@ -1010,7 +1010,7 @@ pub const JNIEnv = extern struct {
     /// The passed method_id must be a constructor, and args must match
     /// Class must not be an array (see newArray!)
     pub fn newObject(self: *Self, class: jclass, method_id: jmethodID, args: ?[*]const jvalue) NewObjectError!jobject {
-        var maybe_object = self.interface.NewObjectA(self, class, method_id, args);
+        const maybe_object = self.interface.NewObjectA(self, class, method_id, args);
         return if (maybe_object) |object|
             object
         else
@@ -1051,7 +1051,7 @@ pub const JNIEnv = extern struct {
 
     /// Returns the field ID for an instance (nonstatic) field of a class; the field is specified by its name and signature
     pub fn getFieldId(self: *Self, class: jclass, name: [*:0]const u8, signature: [*:0]const u8) GetFieldIdError!jfieldID {
-        var maybe_jfieldid = self.interface.GetFieldID(self, class, name, signature);
+        const maybe_jfieldid = self.interface.GetFieldID(self, class, name, signature);
         return if (maybe_jfieldid) |object|
             object
         else
@@ -1102,7 +1102,7 @@ pub const JNIEnv = extern struct {
 
     /// Returns the method ID for an instance (nonstatic) method of a class or interface
     pub fn getMethodId(self: *Self, class: jclass, name: [*:0]const u8, signature: [*:0]const u8) GetMethodIdError!jmethodID {
-        var maybe_jmethodid = self.interface.GetMethodID(self, class, name, signature);
+        const maybe_jmethodid = self.interface.GetMethodID(self, class, name, signature);
         return if (maybe_jmethodid) |object|
             object
         else
@@ -1113,7 +1113,7 @@ pub const JNIEnv = extern struct {
 
     /// Invoke an instance (nonstatic) method on a Java object
     pub fn callMethod(self: *Self, comptime native_type: NativeType, object: jobject, method_id: jmethodID, args: ?[*]const jvalue) CallMethodError!MapNativeType(native_type) {
-        var value = (switch (native_type) {
+        const value = (switch (native_type) {
             .object => self.interface.CallObjectMethodA,
             .boolean => self.interface.CallBooleanMethodA,
             .byte => self.interface.CallByteMethodA,
@@ -1133,7 +1133,7 @@ pub const JNIEnv = extern struct {
 
     /// Invoke an instance (nonstatic) method on a Java object based on `class`'s implementation of the method
     pub fn callNonVirtualMethod(self: *Self, comptime native_type: NativeType, object: jobject, class: jclass, method_id: jmethodID, args: ?[*]const jvalue) CallNonVirtualMethodError!MapNativeType(native_type) {
-        var value = (switch (native_type) {
+        const value = (switch (native_type) {
             .object => self.interface.CallNonvirtualObjectMethodA,
             .boolean => self.interface.CallNonvirtualBooleanMethodA,
             .byte => self.interface.CallNonvirtualByteMethodA,
@@ -1160,7 +1160,7 @@ pub const JNIEnv = extern struct {
     };
 
     pub fn getStaticFieldId(self: *Self, class: jclass, name: [*:0]const u8, signature: [*:0]const u8) GetStaticFieldIdError!jfieldID {
-        var maybe_jfieldid = self.interface.GetStaticFieldID(self, class, name, signature);
+        const maybe_jfieldid = self.interface.GetStaticFieldID(self, class, name, signature);
         return if (maybe_jfieldid) |object|
             object
         else
@@ -1211,7 +1211,7 @@ pub const JNIEnv = extern struct {
 
     /// Returns the method ID for a static method of a class
     pub fn getStaticMethodId(self: *Self, class: jclass, name: [*:0]const u8, signature: [*:0]const u8) GetStaticMethodIdError!jmethodID {
-        var maybe_jmethodid = self.interface.GetStaticMethodID(self, class, name, signature);
+        const maybe_jmethodid = self.interface.GetStaticMethodID(self, class, name, signature);
         return if (maybe_jmethodid) |object|
             object
         else
@@ -1222,7 +1222,7 @@ pub const JNIEnv = extern struct {
 
     /// Invoke an instance (nonstatic) method on a Java object
     pub fn callStaticMethod(self: *Self, comptime native_type: NativeType, class: jclass, method_id: jmethodID, args: ?[*]const jvalue) CallStaticMethodError!MapNativeType(native_type) {
-        var value = (switch (native_type) {
+        const value = (switch (native_type) {
             .object => self.interface.CallStaticObjectMethodA,
             .boolean => self.interface.CallStaticBooleanMethodA,
             .byte => self.interface.CallStaticByteMethodA,
@@ -1244,7 +1244,7 @@ pub const JNIEnv = extern struct {
 
     /// Constructs a new java.lang.String object from an array of Unicode characters
     pub fn newString(self: *Self, unicode_chars: []const u16) NewStringError!jstring {
-        var maybe_jstring = self.interface.NewString(self, @as([*]const u16, @ptrCast(unicode_chars)), @as(jsize, @intCast(unicode_chars.len)));
+        const maybe_jstring = self.interface.NewString(self, @as([*]const u16, @ptrCast(unicode_chars)), @as(jsize, @intCast(unicode_chars.len)));
         return if (maybe_jstring) |string|
             string
         else
@@ -1263,7 +1263,7 @@ pub const JNIEnv = extern struct {
     /// Caller must release chars with `releaseStringChars`
     pub fn getStringChars(self: *Self, string: jstring) GetStringCharsError!GetStringCharsReturn {
         var is_copy: u8 = 0;
-        var maybe_chars = self.interface.GetStringChars(self, string, &is_copy);
+        const maybe_chars = self.interface.GetStringChars(self, string, &is_copy);
         return if (maybe_chars) |chars|
             GetStringCharsReturn{ .chars = chars, .is_copy = is_copy == 1 }
         else
@@ -1279,7 +1279,7 @@ pub const JNIEnv = extern struct {
 
     /// Constructs a new java.lang.String object from an array of characters in modified UTF-8 encoding
     pub fn newStringUTF(self: *Self, buf: [*:0]const u8) NewStringUTFError!jstring {
-        var maybe_jstring = self.interface.NewStringUTF(self, buf);
+        const maybe_jstring = self.interface.NewStringUTF(self, buf);
         return if (maybe_jstring) |string|
             string
         else
@@ -1298,7 +1298,7 @@ pub const JNIEnv = extern struct {
     /// Caller must release chars with `releaseStringUTFChars`
     pub fn getStringUTFChars(self: *Self, string: jstring) GetStringUTFCharsError!GetStringUTFCharsReturn {
         var is_copy: u8 = 0;
-        var maybe_chars = self.interface.GetStringUTFChars(self, string, &is_copy);
+        const maybe_chars = self.interface.GetStringUTFChars(self, string, &is_copy);
         return if (maybe_chars) |chars|
             GetStringUTFCharsReturn{ .chars = chars, .is_copy = is_copy == 1 }
         else
@@ -1336,7 +1336,7 @@ pub const JNIEnv = extern struct {
     /// Caller must release chars with `releaseStringCritical`
     pub fn getStringCritical(self: *Self, string: jstring) GetStringCriticalError!GetStringCriticalReturn {
         var is_copy: u8 = 0;
-        var maybe_chars = self.interface.GetStringCritical(self, string, &is_copy);
+        const maybe_chars = self.interface.GetStringCritical(self, string, &is_copy);
         return if (maybe_chars) |chars|
             GetStringCriticalReturn{ .chars = chars, .is_copy = is_copy == 1 }
         else
@@ -1362,7 +1362,7 @@ pub const JNIEnv = extern struct {
     pub const NewDirectByteBufferError = error{Unknown};
 
     pub fn newDirectByteBuffer(self: *Self, ptr: *anyopaque, len: usize) NewDirectByteBufferError!jobject {
-        var maybe_obj = self.interface.NewDirectByteBuffer(self, ptr, @as(jlong, @bitCast(len)));
+        const maybe_obj = self.interface.NewDirectByteBuffer(self, ptr, @as(jlong, @bitCast(len)));
         return if (maybe_obj) |obj|
             obj
         else
@@ -1385,7 +1385,7 @@ pub const JNIEnv = extern struct {
 
     /// Constructs a new array holding objects in class elementClass. All elements are initially set to initial_element.
     pub fn newObjectArray(self: *Self, length: jsize, class: jclass, initial_element: jobject) NewObjectArrayError!jobjectArray {
-        var maybe_array = self.interface.NewObjectArray(self, length, class, initial_element);
+        const maybe_array = self.interface.NewObjectArray(self, length, class, initial_element);
         return if (maybe_array) |array|
             array
         else if (self.hasPendingException())
@@ -1405,7 +1405,7 @@ pub const JNIEnv = extern struct {
         array: jobjectArray,
         index: jsize,
     ) GetObjectArrayElementError!jobject {
-        var maybe_obj = self.interface.GetObjectArrayElement(self, array, index);
+        const maybe_obj = self.interface.GetObjectArrayElement(self, array, index);
         return if (maybe_obj) |obj|
             obj
         else
@@ -1476,7 +1476,7 @@ pub const JNIEnv = extern struct {
         array: MapArrayType(native_type),
     ) GetPrimitiveArrayElementsError!GetPrimitiveArrayElementsReturn(native_type) {
         var is_copy: jboolean = 0;
-        var maybe_elements = (switch (native_type) {
+        const maybe_elements = (switch (native_type) {
             .boolean => self.interface.GetBooleanArrayElements,
             .byte => self.interface.GetByteArrayElements,
             .char => self.interface.GetCharArrayElements,
@@ -1618,7 +1618,7 @@ pub const JNIEnv = extern struct {
         array: MapArrayType(native_type),
     ) GetPrimitiveArrayCriticalError!GetPrimitiveArrayCriticalReturn(native_type) {
         var is_copy: jboolean = 0;
-        var maybe_region = (switch (native_type) {
+        const maybe_region = (switch (native_type) {
             else => self.interface.GetPrimitiveArrayCritical,
             .object => @compileError("Only primitive types are allowed"),
             .void => unreachable,
@@ -1681,7 +1681,7 @@ pub const JavaVM = extern struct {
 
     pub fn getCreatedJavaVM() JNIFailureError!?*JavaVM {
         var buffer: [1]*JavaVM = undefined;
-        var result = try getCreatedJavaVMs(&buffer);
+        const result = try getCreatedJavaVMs(&buffer);
         return if (result.len == 0)
             null
         else
@@ -1769,7 +1769,7 @@ const getTestingJNIEnv = struct {
             },
             .ignore_unrecognized = true,
         };
-        var result = JavaVM.createJavaVM(&args) catch |err| {
+        const result = JavaVM.createJavaVM(&args) catch |err| {
             std.debug.panic("Cannot create JVM {}", .{err});
         };
         env = result.env;
@@ -1784,8 +1784,8 @@ const getTestingJNIEnv = struct {
 test "Check created JVM" {
     var env = getTestingJNIEnv();
 
-    var jvm = try env.getJavaVM();
-    var created_jvm = try JavaVM.getCreatedJavaVM();
+    const jvm = try env.getJavaVM();
+    const created_jvm = try JavaVM.getCreatedJavaVM();
     try testing.expect(created_jvm != null);
     try testing.expectEqual(jvm, created_jvm.?);
 }
@@ -1793,22 +1793,22 @@ test "Check created JVM" {
 test "getClassNameOfObject" {
     var env = getTestingJNIEnv();
 
-    var class = try env.findClass("com/jui/TypesTest");
+    const class = try env.findClass("com/jui/TypesTest");
     try testing.expect(class != null);
     defer env.deleteReference(.local, class);
 
-    var obj = try env.allocObject(class);
+    const obj = try env.allocObject(class);
     try testing.expect(obj != null);
     defer env.deleteReference(.local, obj);
 
-    var className = env.getClassNameOfObject(obj);
+    const className = env.getClassNameOfObject(obj);
     try testing.expect(className != null);
     defer env.deleteReference(.local, className);
 
     var utf = try env.getStringUTFChars(className);
     defer env.releaseStringUTFChars(className, utf.chars);
 
-    var len = env.getStringUTFLength(className);
+    const len = env.getStringUTFLength(className);
     try testing.expectEqual(@as(jsize, 17), len);
 
     try testing.expectEqualStrings("com.jui.TypesTest", utf.chars[0..@as(usize, @intCast(len))]);
@@ -1828,7 +1828,7 @@ test "defineClass" {
 test "findClass" {
     var env = getTestingJNIEnv();
 
-    var objectClass = try env.findClass("java/lang/Object");
+    const objectClass = try env.findClass("java/lang/Object");
     try testing.expect(objectClass != null);
     defer env.deleteReference(.local, objectClass);
 
@@ -1842,17 +1842,17 @@ test "findClass" {
 test "getSuperclass" {
     var env = getTestingJNIEnv();
 
-    var objectClass = try env.findClass("java/lang/Object");
+    const objectClass = try env.findClass("java/lang/Object");
     try testing.expect(objectClass != null);
     defer env.deleteReference(.local, objectClass);
 
     try testing.expect(env.getSuperclass(objectClass) == null);
 
-    var stringClass = try env.findClass("java/lang/String");
+    const stringClass = try env.findClass("java/lang/String");
     try testing.expect(stringClass != null);
     defer env.deleteReference(.local, stringClass);
 
-    var superClass = env.getSuperclass(stringClass);
+    const superClass = env.getSuperclass(stringClass);
     try testing.expect(superClass != null);
     defer env.deleteReference(.local, superClass);
 
@@ -1862,17 +1862,17 @@ test "getSuperclass" {
 test "isAssignableFrom" {
     var env = getTestingJNIEnv();
 
-    var objectClass = try env.findClass("java/lang/Object");
+    const objectClass = try env.findClass("java/lang/Object");
     try testing.expect(objectClass != null);
     defer env.deleteReference(.local, objectClass);
 
     try testing.expect(env.getSuperclass(objectClass) == null);
 
-    var stringClass = try env.findClass("java/lang/String");
+    const stringClass = try env.findClass("java/lang/String");
     try testing.expect(stringClass != null);
     defer env.deleteReference(.local, stringClass);
 
-    var longClass = try env.findClass("java/lang/Long");
+    const longClass = try env.findClass("java/lang/Long");
     try testing.expect(longClass != null);
     defer env.deleteReference(.local, longClass);
 
@@ -1883,11 +1883,11 @@ test "isAssignableFrom" {
 test "getModule" {
     var env = getTestingJNIEnv();
 
-    var exceptionClass = try env.findClass("java/lang/Exception");
+    const exceptionClass = try env.findClass("java/lang/Exception");
     try testing.expect(exceptionClass != null);
     defer env.deleteReference(.local, exceptionClass);
 
-    var module = env.getModule(exceptionClass);
+    const module = env.getModule(exceptionClass);
     try testing.expect(module != null);
     defer env.deleteReference(.local, module);
 }
@@ -1895,11 +1895,11 @@ test "getModule" {
 test "throw" {
     var env = getTestingJNIEnv();
 
-    var exceptionClass = try env.findClass("java/lang/Exception");
+    const exceptionClass = try env.findClass("java/lang/Exception");
     try testing.expect(exceptionClass != null);
     defer env.deleteReference(.local, exceptionClass);
 
-    var exception = try env.allocObject(exceptionClass);
+    const exception = try env.allocObject(exceptionClass);
     try testing.expect(exception != null);
     defer env.deleteReference(.local, exception);
 
@@ -1912,7 +1912,7 @@ test "throw" {
 test "throwNew" {
     var env = getTestingJNIEnv();
 
-    var exceptionClass = try env.findClass("java/lang/Exception");
+    const exceptionClass = try env.findClass("java/lang/Exception");
     try testing.expect(exceptionClass != null);
     defer env.deleteReference(.local, exceptionClass);
 
@@ -1943,7 +1943,7 @@ test "getPendingException" {
     try env.throwGeneric("");
     defer env.clearPendingException();
 
-    var pendingException = env.getPendingException();
+    const pendingException = env.getPendingException();
     try testing.expect(pendingException != null);
     defer env.deleteReference(.local, pendingException);
 }
@@ -1988,14 +1988,14 @@ test "hasPendingException" {
     {
         try testing.expect(!env.hasPendingException());
 
-        var testClass = try env.findClass("com/jui/TypesTest");
+        const testClass = try env.findClass("com/jui/TypesTest");
         try testing.expect(testClass != null);
         defer env.deleteReference(.local, testClass);
 
-        var methodId = try env.getMethodId(testClass, "fail", "()V");
+        const methodId = try env.getMethodId(testClass, "fail", "()V");
         try testing.expect(methodId != null);
 
-        var obj = try env.allocObject(testClass);
+        const obj = try env.allocObject(testClass);
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
@@ -2025,28 +2025,28 @@ test "hasPendingException" {
 test "references: newReference, deleteReference, getObjectReferenceKind, isSameObject" {
     var env = getTestingJNIEnv();
 
-    var booleanClass = try env.findClass("java/lang/Boolean");
+    const booleanClass = try env.findClass("java/lang/Boolean");
     try testing.expect(booleanClass != null);
     defer env.deleteReference(.local, booleanClass);
 
-    var obj = try env.allocObject(booleanClass);
+    const obj = try env.allocObject(booleanClass);
     defer env.deleteReference(.local, obj);
     try testing.expect(obj != null);
     try testing.expect(env.getObjectReferenceKind(obj) == .local);
 
-    var local_ref = try env.newReference(.local, obj);
+    const local_ref = try env.newReference(.local, obj);
     defer env.deleteReference(.local, local_ref);
     try testing.expect(local_ref != null);
     try testing.expect(env.isSameObject(obj, local_ref));
     try testing.expect(env.getObjectReferenceKind(local_ref) == .local);
 
-    var global_ref = try env.newReference(.global, obj);
+    const global_ref = try env.newReference(.global, obj);
     defer env.deleteReference(.global, global_ref);
     try testing.expect(global_ref != null);
     try testing.expect(env.isSameObject(obj, global_ref));
     try testing.expect(env.getObjectReferenceKind(global_ref) == .global);
 
-    var weak_ref = try env.newReference(.weak_global, obj);
+    const weak_ref = try env.newReference(.weak_global, obj);
     defer env.deleteReference(.weak_global, weak_ref);
     try testing.expect(weak_ref != null);
     try testing.expect(env.isSameObject(obj, weak_ref));
@@ -2060,31 +2060,31 @@ test "pushLocalFrame, popLocalFrame and ensureLocalCapacity" {
     try env.pushLocalFrame(1);
     try env.ensureLocalCapacity(10);
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
 
-    var obj = try env.allocObject(testClass);
+    const obj = try env.allocObject(testClass);
     try testing.expect(obj != null);
 
     // All references must be invalidated after this frame being droped
-    var result = env.popLocalFrame(@as(jobject, null));
+    const result = env.popLocalFrame(@as(jobject, null));
     try testing.expect(result == null);
 
-    var dead_reference = env.getObjectReferenceKind(obj);
+    const dead_reference = env.getObjectReferenceKind(obj);
     try testing.expect(dead_reference == ObjectReferenceKind.invalid);
 }
 
 test "allocObject" {
     var env = getTestingJNIEnv();
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var obj = try env.allocObject(testClass);
+    const obj = try env.allocObject(testClass);
     try testing.expect(obj != null);
     defer env.deleteReference(.local, obj);
 
-    var interface = try env.findClass("com/jui/TypesTest$Interface");
+    const interface = try env.findClass("com/jui/TypesTest$Interface");
     try testing.expect(interface != null);
     defer env.deleteReference(.local, interface);
 
@@ -2094,7 +2094,7 @@ test "allocObject" {
         try testing.expect(err == error.InstantiationException);
     }
 
-    var abstract = try env.findClass("com/jui/TypesTest$Abstract");
+    const abstract = try env.findClass("com/jui/TypesTest$Abstract");
     try testing.expect(abstract != null);
     defer env.deleteReference(.local, abstract);
 
@@ -2108,165 +2108,165 @@ test "allocObject" {
 test "newObject1" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
     // Default constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "()V");
+        const ctor = try env.getMethodId(testClass, "<init>", "()V");
         try testing.expect(ctor != null);
 
-        var obj = try env.newObject(testClass, ctor, null);
+        const obj = try env.newObject(testClass, ctor, null);
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
     }
 
     // Boolean constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(Z)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(Z)V");
         try testing.expect(ctor != null);
 
-        var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jboolean, 1))});
+        const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jboolean, 1))});
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
-        var fieldId = try env.getFieldId(testClass, "booleanValue", "Z");
+        const fieldId = try env.getFieldId(testClass, "booleanValue", "Z");
         try testing.expect(fieldId != null);
 
-        var value = env.getField(.boolean, obj, fieldId);
+        const value = env.getField(.boolean, obj, fieldId);
         try testing.expectEqual(@as(jboolean, @intCast(1)), value);
     }
 
     // Byte constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(B)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(B)V");
         try testing.expect(ctor != null);
 
-        var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jbyte, 1))});
+        const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jbyte, 1))});
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
-        var fieldId = try env.getFieldId(testClass, "byteValue", "B");
+        const fieldId = try env.getFieldId(testClass, "byteValue", "B");
         try testing.expect(fieldId != null);
 
-        var value = env.getField(.byte, obj, fieldId);
+        const value = env.getField(.byte, obj, fieldId);
         try testing.expectEqual(@as(jbyte, @intCast(1)), value);
     }
 
     // Char constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(C)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(C)V");
         try testing.expect(ctor != null);
 
-        var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jchar, 1))});
+        const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jchar, 1))});
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
-        var fieldId = try env.getFieldId(testClass, "charValue", "C");
+        const fieldId = try env.getFieldId(testClass, "charValue", "C");
         try testing.expect(fieldId != null);
 
-        var value = env.getField(.char, obj, fieldId);
+        const value = env.getField(.char, obj, fieldId);
         try testing.expectEqual(@as(jchar, @intCast(1)), value);
     }
 
     // Short constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(S)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(S)V");
         try testing.expect(ctor != null);
 
-        var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jshort, 1))});
+        const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jshort, 1))});
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
-        var fieldId = try env.getFieldId(testClass, "shortValue", "S");
+        const fieldId = try env.getFieldId(testClass, "shortValue", "S");
         try testing.expect(fieldId != null);
 
-        var value = env.getField(.short, obj, fieldId);
+        const value = env.getField(.short, obj, fieldId);
         try testing.expectEqual(@as(jshort, @intCast(1)), value);
     }
 
     // Int constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(I)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(I)V");
         try testing.expect(ctor != null);
 
-        var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jint, 1))});
+        const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jint, 1))});
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
-        var fieldId = try env.getFieldId(testClass, "intValue", "I");
+        const fieldId = try env.getFieldId(testClass, "intValue", "I");
         try testing.expect(fieldId != null);
 
-        var value = env.getField(.int, obj, fieldId);
+        const value = env.getField(.int, obj, fieldId);
         try testing.expectEqual(@as(jint, @intCast(1)), value);
     }
 
     // Long constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(J)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(J)V");
         try testing.expect(ctor != null);
 
-        var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jlong, 1))});
+        const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jlong, 1))});
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
-        var fieldId = try env.getFieldId(testClass, "longValue", "J");
+        const fieldId = try env.getFieldId(testClass, "longValue", "J");
         try testing.expect(fieldId != null);
 
-        var value = env.getField(.long, obj, fieldId);
+        const value = env.getField(.long, obj, fieldId);
         try testing.expectEqual(@as(jlong, @intCast(1)), value);
     }
 
     // Float constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(F)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(F)V");
         try testing.expect(ctor != null);
 
-        var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jfloat, 1.0))});
+        const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jfloat, 1.0))});
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
-        var fieldId = try env.getFieldId(testClass, "floatValue", "F");
+        const fieldId = try env.getFieldId(testClass, "floatValue", "F");
         try testing.expect(fieldId != null);
 
-        var value = env.getField(.float, obj, fieldId);
+        const value = env.getField(.float, obj, fieldId);
         try testing.expectEqual(@as(jfloat, 1.0), value);
     }
 
     // Double constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(D)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(D)V");
         try testing.expect(ctor != null);
 
-        var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jdouble, 1.0))});
+        const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jdouble, 1.0))});
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
-        var fieldId = try env.getFieldId(testClass, "doubleValue", "D");
+        const fieldId = try env.getFieldId(testClass, "doubleValue", "D");
         try testing.expect(fieldId != null);
 
-        var value = env.getField(.double, obj, fieldId);
+        const value = env.getField(.double, obj, fieldId);
         try testing.expectEqual(@as(jdouble, 1.0), value);
     }
 
     // Object constructor
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(Ljava/lang/Object;)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(Ljava/lang/Object;)V");
         try testing.expect(ctor != null);
 
-        var arg = try env.allocObject(testClass);
+        const arg = try env.allocObject(testClass);
         try testing.expect(arg != null);
         defer env.deleteReference(.local, arg);
 
-        var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(arg)});
+        const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(arg)});
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
-        var fieldId = try env.getFieldId(testClass, "objectValue", "Ljava/lang/Object;");
+        const fieldId = try env.getFieldId(testClass, "objectValue", "Ljava/lang/Object;");
         try testing.expect(fieldId != null);
 
-        var value = env.getField(.object, obj, fieldId);
+        const value = env.getField(.object, obj, fieldId);
         try testing.expect(value != null);
         defer env.deleteReference(.local, value);
 
@@ -2275,10 +2275,10 @@ test "newObject1" {
 
     // Abstract class
     {
-        var abstractClass = try env.findClass("com/jui/TypesTest$Abstract");
+        const abstractClass = try env.findClass("com/jui/TypesTest$Abstract");
         try testing.expect(abstractClass != null);
 
-        var ctor = try env.getMethodId(abstractClass, "<init>", "()V");
+        const ctor = try env.getMethodId(abstractClass, "<init>", "()V");
         try testing.expect(ctor != null);
 
         if (env.newObject(abstractClass, ctor, null)) |_| {
@@ -2292,15 +2292,15 @@ test "newObject1" {
 test "newObject2" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var obj = try env.allocObject(testClass);
+    const obj = try env.allocObject(testClass);
     try testing.expect(obj != null);
     defer env.deleteReference(.local, obj);
 
-    var objClass = env.getObjectClass(obj);
+    const objClass = env.getObjectClass(obj);
     try testing.expect(objClass != null);
     defer env.deleteReference(.local, objClass);
 
@@ -2310,17 +2310,17 @@ test "newObject2" {
 test "isInstanceOf" {
     var env = getTestingJNIEnv();
 
-    var booleanClass = try env.findClass("java/lang/Boolean");
+    const booleanClass = try env.findClass("java/lang/Boolean");
     try testing.expect(booleanClass != null);
     defer env.deleteReference(.local, booleanClass);
 
-    var obj = try env.allocObject(booleanClass);
+    const obj = try env.allocObject(booleanClass);
     try testing.expect(obj != null);
     defer env.deleteReference(.local, obj);
 
     try testing.expect(env.isInstanceOf(obj, booleanClass));
 
-    var longClass = try env.findClass("java/lang/Long");
+    const longClass = try env.findClass("java/lang/Long");
     try testing.expect(longClass != null);
     defer env.deleteReference(.local, longClass);
 
@@ -2330,11 +2330,11 @@ test "isInstanceOf" {
 test "getFieldId" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var fieldId = try env.getFieldId(testClass, "booleanValue", "Z");
+    const fieldId = try env.getFieldId(testClass, "booleanValue", "Z");
     try testing.expect(fieldId != null);
 
     if (env.getFieldId(testClass, "not_a_valid_field", "I")) |_| {
@@ -2347,137 +2347,137 @@ test "getFieldId" {
 test "fields: getField and setField" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var obj = try env.allocObject(testClass);
+    const obj = try env.allocObject(testClass);
     try testing.expect(obj != null);
     defer env.deleteReference(.local, obj);
 
     // Boolean
     {
-        var fieldId = try env.getFieldId(testClass, "booleanValue", "Z");
+        const fieldId = try env.getFieldId(testClass, "booleanValue", "Z");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getField(.boolean, obj, fieldId);
+        const v1 = env.getField(.boolean, obj, fieldId);
         try testing.expect(v1 == 0);
 
         env.setField(.boolean, obj, fieldId, @as(jboolean, 1));
 
-        var v2 = env.getField(.boolean, obj, fieldId);
+        const v2 = env.getField(.boolean, obj, fieldId);
         try testing.expect(v2 == 1);
     }
 
     // Byte
     {
-        var fieldId = try env.getFieldId(testClass, "byteValue", "B");
+        const fieldId = try env.getFieldId(testClass, "byteValue", "B");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getField(.byte, obj, fieldId);
+        const v1 = env.getField(.byte, obj, fieldId);
         try testing.expect(v1 == 0);
 
         env.setField(.byte, obj, fieldId, @as(jbyte, 127));
 
-        var v2 = env.getField(.byte, obj, fieldId);
+        const v2 = env.getField(.byte, obj, fieldId);
         try testing.expect(v2 == 127);
     }
 
     // Char
     {
-        var fieldId = try env.getFieldId(testClass, "charValue", "C");
+        const fieldId = try env.getFieldId(testClass, "charValue", "C");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getField(.char, obj, fieldId);
+        const v1 = env.getField(.char, obj, fieldId);
         try testing.expect(v1 == 0);
 
         env.setField(.char, obj, fieldId, @as(jchar, 'A'));
 
-        var v2 = env.getField(.char, obj, fieldId);
+        const v2 = env.getField(.char, obj, fieldId);
         try testing.expect(v2 == 'A');
     }
 
     // Short
     {
-        var fieldId = try env.getFieldId(testClass, "shortValue", "S");
+        const fieldId = try env.getFieldId(testClass, "shortValue", "S");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getField(.char, obj, fieldId);
+        const v1 = env.getField(.char, obj, fieldId);
         try testing.expect(v1 == 0);
 
         env.setField(.short, obj, fieldId, @as(jshort, 9999));
 
-        var v2 = env.getField(.short, obj, fieldId);
+        const v2 = env.getField(.short, obj, fieldId);
         try testing.expect(v2 == 9999);
     }
 
     // Int
     {
-        var fieldId = try env.getFieldId(testClass, "intValue", "I");
+        const fieldId = try env.getFieldId(testClass, "intValue", "I");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getField(.int, obj, fieldId);
+        const v1 = env.getField(.int, obj, fieldId);
         try testing.expect(v1 == 0);
 
         env.setField(.int, obj, fieldId, @as(jint, 999_999));
 
-        var v2 = env.getField(.int, obj, fieldId);
+        const v2 = env.getField(.int, obj, fieldId);
         try testing.expect(v2 == 999_999);
     }
 
     // Long
     {
-        var fieldId = try env.getFieldId(testClass, "longValue", "J");
+        const fieldId = try env.getFieldId(testClass, "longValue", "J");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getField(.long, obj, fieldId);
+        const v1 = env.getField(.long, obj, fieldId);
         try testing.expect(v1 == 0);
 
         env.setField(.long, obj, fieldId, @as(jlong, 9_999_999_999));
 
-        var v2 = env.getField(.long, obj, fieldId);
+        const v2 = env.getField(.long, obj, fieldId);
         try testing.expect(v2 == 9_999_999_999);
     }
 
     // Float
     {
-        var fieldId = try env.getFieldId(testClass, "floatValue", "F");
+        const fieldId = try env.getFieldId(testClass, "floatValue", "F");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getField(.float, obj, fieldId);
+        const v1 = env.getField(.float, obj, fieldId);
         try testing.expect(v1 == 0.0);
 
         env.setField(.float, obj, fieldId, @as(jfloat, 9.99));
 
-        var v2 = env.getField(.float, obj, fieldId);
+        const v2 = env.getField(.float, obj, fieldId);
         try testing.expect(v2 == 9.99);
     }
 
     // Double
     {
-        var fieldId = try env.getFieldId(testClass, "doubleValue", "D");
+        const fieldId = try env.getFieldId(testClass, "doubleValue", "D");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getField(.double, obj, fieldId);
+        const v1 = env.getField(.double, obj, fieldId);
         try testing.expect(v1 == 0.0);
 
         env.setField(.double, obj, fieldId, @as(jdouble, 9.99));
 
-        var v2 = env.getField(.double, obj, fieldId);
+        const v2 = env.getField(.double, obj, fieldId);
         try testing.expect(v2 == 9.99);
     }
 
     // Object
     {
-        var fieldId = try env.getFieldId(testClass, "objectValue", "Ljava/lang/Object;");
+        const fieldId = try env.getFieldId(testClass, "objectValue", "Ljava/lang/Object;");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getField(.object, obj, fieldId);
+        const v1 = env.getField(.object, obj, fieldId);
         try testing.expect(v1 == null);
 
         env.setField(.object, obj, fieldId, obj);
 
-        var v2 = env.getField(.object, obj, fieldId);
+        const v2 = env.getField(.object, obj, fieldId);
         try testing.expect(v2 != null);
         defer env.deleteReference(.local, v2);
 
@@ -2488,11 +2488,11 @@ test "fields: getField and setField" {
 test "getMethodId" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var methodId = try env.getMethodId(testClass, "getBooleanValue", "()Z");
+    const methodId = try env.getMethodId(testClass, "getBooleanValue", "()Z");
     try testing.expect(methodId != null);
 
     if (env.getMethodId(testClass, "not_a_valid_method", "()Z")) |_| {
@@ -2505,17 +2505,17 @@ test "getMethodId" {
 test "methods: callMethod and callNonVirtualMethod" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var obj = try env.allocObject(testClass);
+    const obj = try env.allocObject(testClass);
     try testing.expect(obj != null);
     defer env.deleteReference(.local, obj);
 
     // With arguments
     {
-        var methodId = try env.getMethodId(testClass, "initialize", "(ZBCSIJFDLjava/lang/Object;)V");
+        const methodId = try env.getMethodId(testClass, "initialize", "(ZBCSIJFDLjava/lang/Object;)V");
         try testing.expect(methodId != null);
 
         const args = &[_]jvalue{
@@ -2537,112 +2537,112 @@ test "methods: callMethod and callNonVirtualMethod" {
 
     // Return Boolean
     {
-        var methodId = try env.getMethodId(testClass, "getBooleanValue", "()Z");
+        const methodId = try env.getMethodId(testClass, "getBooleanValue", "()Z");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callMethod(.boolean, obj, methodId, null);
+        const v1 = try env.callMethod(.boolean, obj, methodId, null);
         try testing.expect(v1 == 1);
 
-        var v2 = try env.callNonVirtualMethod(.boolean, obj, testClass, methodId, null);
+        const v2 = try env.callNonVirtualMethod(.boolean, obj, testClass, methodId, null);
         try testing.expect(v2 == 1);
     }
 
     // Return Byte
     {
-        var methodId = try env.getMethodId(testClass, "getByteValue", "()B");
+        const methodId = try env.getMethodId(testClass, "getByteValue", "()B");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callMethod(.byte, obj, methodId, null);
+        const v1 = try env.callMethod(.byte, obj, methodId, null);
         try testing.expect(v1 == 127);
 
-        var v2 = try env.callNonVirtualMethod(.byte, obj, testClass, methodId, null);
+        const v2 = try env.callNonVirtualMethod(.byte, obj, testClass, methodId, null);
         try testing.expect(v2 == 127);
     }
 
     // Return Char
     {
-        var methodId = try env.getMethodId(testClass, "getCharValue", "()C");
+        const methodId = try env.getMethodId(testClass, "getCharValue", "()C");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callMethod(.char, obj, methodId, null);
+        const v1 = try env.callMethod(.char, obj, methodId, null);
         try testing.expect(v1 == 'A');
 
-        var v2 = try env.callNonVirtualMethod(.char, obj, testClass, methodId, null);
+        const v2 = try env.callNonVirtualMethod(.char, obj, testClass, methodId, null);
         try testing.expect(v2 == 'A');
     }
 
     // Return Short
     {
-        var methodId = try env.getMethodId(testClass, "getShortValue", "()S");
+        const methodId = try env.getMethodId(testClass, "getShortValue", "()S");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callMethod(.short, obj, methodId, null);
+        const v1 = try env.callMethod(.short, obj, methodId, null);
         try testing.expect(v1 == 9999);
 
-        var v2 = try env.callNonVirtualMethod(.short, obj, testClass, methodId, null);
+        const v2 = try env.callNonVirtualMethod(.short, obj, testClass, methodId, null);
         try testing.expect(v2 == 9999);
     }
 
     // Return Integer
     {
-        var methodId = try env.getMethodId(testClass, "getIntValue", "()I");
+        const methodId = try env.getMethodId(testClass, "getIntValue", "()I");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callMethod(.int, obj, methodId, null);
+        const v1 = try env.callMethod(.int, obj, methodId, null);
         try testing.expect(v1 == 999_999);
 
-        var v2 = try env.callNonVirtualMethod(.int, obj, testClass, methodId, null);
+        const v2 = try env.callNonVirtualMethod(.int, obj, testClass, methodId, null);
         try testing.expect(v2 == 999_999);
     }
 
     // Return Long
     {
-        var methodId = try env.getMethodId(testClass, "getLongValue", "()J");
+        const methodId = try env.getMethodId(testClass, "getLongValue", "()J");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callMethod(.long, obj, methodId, null);
+        const v1 = try env.callMethod(.long, obj, methodId, null);
         try testing.expect(v1 == 9_999_999_999);
 
-        var v2 = try env.callNonVirtualMethod(.long, obj, testClass, methodId, null);
+        const v2 = try env.callNonVirtualMethod(.long, obj, testClass, methodId, null);
         try testing.expect(v2 == 9_999_999_999);
     }
 
     // Return Float
     {
-        var methodId = try env.getMethodId(testClass, "getFloatValue", "()F");
+        const methodId = try env.getMethodId(testClass, "getFloatValue", "()F");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callMethod(.float, obj, methodId, null);
+        const v1 = try env.callMethod(.float, obj, methodId, null);
         try testing.expect(v1 == 9.99);
 
-        var v2 = try env.callNonVirtualMethod(.float, obj, testClass, methodId, null);
+        const v2 = try env.callNonVirtualMethod(.float, obj, testClass, methodId, null);
         try testing.expect(v2 == 9.99);
     }
 
     // Return Double
     {
-        var methodId = try env.getMethodId(testClass, "getDoubleValue", "()D");
+        const methodId = try env.getMethodId(testClass, "getDoubleValue", "()D");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callMethod(.double, obj, methodId, null);
+        const v1 = try env.callMethod(.double, obj, methodId, null);
         try testing.expect(v1 == 9.99);
 
-        var v2 = try env.callNonVirtualMethod(.double, obj, testClass, methodId, null);
+        const v2 = try env.callNonVirtualMethod(.double, obj, testClass, methodId, null);
         try testing.expect(v2 == 9.99);
     }
 
     // Return Object
     {
-        var methodId = try env.getMethodId(testClass, "getObjectValue", "()Ljava/lang/Object;");
+        const methodId = try env.getMethodId(testClass, "getObjectValue", "()Ljava/lang/Object;");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callMethod(.object, obj, methodId, null);
+        const v1 = try env.callMethod(.object, obj, methodId, null);
         try testing.expect(v1 != null);
         defer env.deleteReference(.local, v1);
 
         try testing.expect(env.isSameObject(obj, v1));
 
-        var v2 = try env.callNonVirtualMethod(.object, obj, testClass, methodId, null);
+        const v2 = try env.callNonVirtualMethod(.object, obj, testClass, methodId, null);
         try testing.expect(v2 != null);
         defer env.deleteReference(.local, v2);
 
@@ -2653,11 +2653,11 @@ test "methods: callMethod and callNonVirtualMethod" {
 test "getStaticFieldId" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var fieldId = try env.getStaticFieldId(testClass, "staticBooleanValue", "Z");
+    const fieldId = try env.getStaticFieldId(testClass, "staticBooleanValue", "Z");
     try testing.expect(fieldId != null);
 
     if (env.getStaticFieldId(testClass, "not_a_valid_field", "Z")) |_| {
@@ -2670,137 +2670,137 @@ test "getStaticFieldId" {
 test "fields: getStaticField and setStaticField" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
     // Boolean
     {
-        var fieldId = try env.getStaticFieldId(testClass, "staticBooleanValue", "Z");
+        const fieldId = try env.getStaticFieldId(testClass, "staticBooleanValue", "Z");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getStaticField(.boolean, testClass, fieldId);
+        const v1 = env.getStaticField(.boolean, testClass, fieldId);
         try testing.expect(v1 == 0);
 
         env.setStaticField(.boolean, testClass, fieldId, @as(jboolean, 1));
 
-        var v2 = env.getStaticField(.boolean, testClass, fieldId);
+        const v2 = env.getStaticField(.boolean, testClass, fieldId);
         try testing.expect(v2 == 1);
     }
 
     // Byte
     {
-        var fieldId = try env.getStaticFieldId(testClass, "staticByteValue", "B");
+        const fieldId = try env.getStaticFieldId(testClass, "staticByteValue", "B");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getStaticField(.byte, testClass, fieldId);
+        const v1 = env.getStaticField(.byte, testClass, fieldId);
         try testing.expect(v1 == 0);
 
         env.setStaticField(.byte, testClass, fieldId, @as(jbyte, 127));
 
-        var v2 = env.getStaticField(.byte, testClass, fieldId);
+        const v2 = env.getStaticField(.byte, testClass, fieldId);
         try testing.expect(v2 == 127);
     }
 
     // Char
     {
-        var fieldId = try env.getStaticFieldId(testClass, "staticCharValue", "C");
+        const fieldId = try env.getStaticFieldId(testClass, "staticCharValue", "C");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getStaticField(.char, testClass, fieldId);
+        const v1 = env.getStaticField(.char, testClass, fieldId);
         try testing.expect(v1 == 0);
 
         env.setStaticField(.char, testClass, fieldId, @as(jchar, 'A'));
 
-        var v2 = env.getStaticField(.char, testClass, fieldId);
+        const v2 = env.getStaticField(.char, testClass, fieldId);
         try testing.expect(v2 == 'A');
     }
 
     // Short
     {
-        var fieldId = try env.getStaticFieldId(testClass, "staticShortValue", "S");
+        const fieldId = try env.getStaticFieldId(testClass, "staticShortValue", "S");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getStaticField(.char, testClass, fieldId);
+        const v1 = env.getStaticField(.char, testClass, fieldId);
         try testing.expect(v1 == 0);
 
         env.setStaticField(.short, testClass, fieldId, @as(jshort, 9999));
 
-        var v2 = env.getStaticField(.short, testClass, fieldId);
+        const v2 = env.getStaticField(.short, testClass, fieldId);
         try testing.expect(v2 == 9999);
     }
 
     // Int
     {
-        var fieldId = try env.getStaticFieldId(testClass, "staticIntValue", "I");
+        const fieldId = try env.getStaticFieldId(testClass, "staticIntValue", "I");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getStaticField(.int, testClass, fieldId);
+        const v1 = env.getStaticField(.int, testClass, fieldId);
         try testing.expect(v1 == 0);
 
         env.setStaticField(.int, testClass, fieldId, @as(jint, 999_999));
 
-        var v2 = env.getStaticField(.int, testClass, fieldId);
+        const v2 = env.getStaticField(.int, testClass, fieldId);
         try testing.expect(v2 == 999_999);
     }
 
     // Long
     {
-        var fieldId = try env.getStaticFieldId(testClass, "staticLongValue", "J");
+        const fieldId = try env.getStaticFieldId(testClass, "staticLongValue", "J");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getStaticField(.long, testClass, fieldId);
+        const v1 = env.getStaticField(.long, testClass, fieldId);
         try testing.expect(v1 == 0);
 
         env.setStaticField(.long, testClass, fieldId, @as(jlong, 9_999_999_999));
 
-        var v2 = env.getStaticField(.long, testClass, fieldId);
+        const v2 = env.getStaticField(.long, testClass, fieldId);
         try testing.expect(v2 == 9_999_999_999);
     }
 
     // Float
     {
-        var fieldId = try env.getStaticFieldId(testClass, "staticFloatValue", "F");
+        const fieldId = try env.getStaticFieldId(testClass, "staticFloatValue", "F");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getStaticField(.float, testClass, fieldId);
+        const v1 = env.getStaticField(.float, testClass, fieldId);
         try testing.expect(v1 == 0.0);
 
         env.setStaticField(.float, testClass, fieldId, @as(jfloat, 9.99));
 
-        var v2 = env.getStaticField(.float, testClass, fieldId);
+        const v2 = env.getStaticField(.float, testClass, fieldId);
         try testing.expect(v2 == 9.99);
     }
 
     // Double
     {
-        var fieldId = try env.getStaticFieldId(testClass, "staticDoubleValue", "D");
+        const fieldId = try env.getStaticFieldId(testClass, "staticDoubleValue", "D");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getStaticField(.double, testClass, fieldId);
+        const v1 = env.getStaticField(.double, testClass, fieldId);
         try testing.expect(v1 == 0.0);
 
         env.setStaticField(.double, testClass, fieldId, @as(jdouble, 9.99));
 
-        var v2 = env.getStaticField(.double, testClass, fieldId);
+        const v2 = env.getStaticField(.double, testClass, fieldId);
         try testing.expect(v2 == 9.99);
     }
 
     // Object
     {
-        var fieldId = try env.getStaticFieldId(testClass, "staticObjectValue", "Ljava/lang/Object;");
+        const fieldId = try env.getStaticFieldId(testClass, "staticObjectValue", "Ljava/lang/Object;");
         try testing.expect(fieldId != null);
 
-        var v1 = env.getStaticField(.object, testClass, fieldId);
+        const v1 = env.getStaticField(.object, testClass, fieldId);
         try testing.expect(v1 == null);
 
-        var obj = try env.allocObject(testClass);
+        const obj = try env.allocObject(testClass);
         try testing.expect(obj != null);
         defer env.deleteReference(.local, obj);
 
         env.setStaticField(.object, testClass, fieldId, obj);
 
-        var v2 = env.getStaticField(.object, testClass, fieldId);
+        const v2 = env.getStaticField(.object, testClass, fieldId);
         try testing.expect(v2 != null);
         defer env.deleteReference(.local, v2);
 
@@ -2811,11 +2811,11 @@ test "fields: getStaticField and setStaticField" {
 test "getStaticMethodId" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var methodId = try env.getStaticMethodId(testClass, "getStaticBooleanValue", "()Z");
+    const methodId = try env.getStaticMethodId(testClass, "getStaticBooleanValue", "()Z");
     try testing.expect(methodId != null);
 
     if (env.getStaticMethodId(testClass, "not_a_valid_method", "()Z")) |_| {
@@ -2828,16 +2828,16 @@ test "getStaticMethodId" {
 test "methods: callStaticMethod" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
     // With arguments
 
-    var initMethodId = try env.getStaticMethodId(testClass, "staticInitialize", "(ZBCSIJFDLjava/lang/Object;)V");
+    const initMethodId = try env.getStaticMethodId(testClass, "staticInitialize", "(ZBCSIJFDLjava/lang/Object;)V");
     try testing.expect(initMethodId != null);
 
-    var obj = try env.allocObject(testClass);
+    const obj = try env.allocObject(testClass);
     try testing.expect(obj != null);
     defer env.deleteReference(.local, obj);
 
@@ -2877,82 +2877,82 @@ test "methods: callStaticMethod" {
 
     // Return Boolean
     {
-        var methodId = try env.getStaticMethodId(testClass, "getStaticBooleanValue", "()Z");
+        const methodId = try env.getStaticMethodId(testClass, "getStaticBooleanValue", "()Z");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callStaticMethod(.boolean, testClass, methodId, null);
+        const v1 = try env.callStaticMethod(.boolean, testClass, methodId, null);
         try testing.expect(v1 == 1);
     }
 
     // Return Byte
     {
-        var methodId = try env.getStaticMethodId(testClass, "getStaticByteValue", "()B");
+        const methodId = try env.getStaticMethodId(testClass, "getStaticByteValue", "()B");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callStaticMethod(.byte, testClass, methodId, null);
+        const v1 = try env.callStaticMethod(.byte, testClass, methodId, null);
         try testing.expect(v1 == 127);
     }
 
     // Return Char
     {
-        var methodId = try env.getStaticMethodId(testClass, "getStaticCharValue", "()C");
+        const methodId = try env.getStaticMethodId(testClass, "getStaticCharValue", "()C");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callStaticMethod(.char, testClass, methodId, null);
+        const v1 = try env.callStaticMethod(.char, testClass, methodId, null);
         try testing.expect(v1 == 'A');
     }
 
     // Return Short
     {
-        var methodId = try env.getStaticMethodId(testClass, "getStaticShortValue", "()S");
+        const methodId = try env.getStaticMethodId(testClass, "getStaticShortValue", "()S");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callStaticMethod(.short, testClass, methodId, null);
+        const v1 = try env.callStaticMethod(.short, testClass, methodId, null);
         try testing.expect(v1 == 9999);
     }
 
     // Return Integer
     {
-        var methodId = try env.getStaticMethodId(testClass, "getStaticIntValue", "()I");
+        const methodId = try env.getStaticMethodId(testClass, "getStaticIntValue", "()I");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callStaticMethod(.int, testClass, methodId, null);
+        const v1 = try env.callStaticMethod(.int, testClass, methodId, null);
         try testing.expect(v1 == 999_999);
     }
 
     // Return Long
     {
-        var methodId = try env.getStaticMethodId(testClass, "getStaticLongValue", "()J");
+        const methodId = try env.getStaticMethodId(testClass, "getStaticLongValue", "()J");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callStaticMethod(.long, testClass, methodId, null);
+        const v1 = try env.callStaticMethod(.long, testClass, methodId, null);
         try testing.expect(v1 == 9_999_999_999);
     }
 
     // Return Float
     {
-        var methodId = try env.getStaticMethodId(testClass, "getStaticFloatValue", "()F");
+        const methodId = try env.getStaticMethodId(testClass, "getStaticFloatValue", "()F");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callStaticMethod(.float, testClass, methodId, null);
+        const v1 = try env.callStaticMethod(.float, testClass, methodId, null);
         try testing.expect(v1 == 9.99);
     }
 
     // Return Double
     {
-        var methodId = try env.getStaticMethodId(testClass, "getStaticDoubleValue", "()D");
+        const methodId = try env.getStaticMethodId(testClass, "getStaticDoubleValue", "()D");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callStaticMethod(.double, testClass, methodId, null);
+        const v1 = try env.callStaticMethod(.double, testClass, methodId, null);
         try testing.expect(v1 == 9.99);
     }
 
     // Return Object
     {
-        var methodId = try env.getStaticMethodId(testClass, "getStaticObjectValue", "()Ljava/lang/Object;");
+        const methodId = try env.getStaticMethodId(testClass, "getStaticObjectValue", "()Ljava/lang/Object;");
         try testing.expect(methodId != null);
 
-        var v1 = try env.callStaticMethod(.object, testClass, methodId, null);
+        const v1 = try env.callStaticMethod(.object, testClass, methodId, null);
         try testing.expect(v1 != null);
         defer env.deleteReference(.local, v1);
 
@@ -2964,11 +2964,11 @@ test "string unicode: newString, getStringLength, getStringChars and releaseStri
     var env = getTestingJNIEnv();
 
     const content = std.unicode.utf8ToUtf16LeStringLiteral("Hello utf16");
-    var str = try env.newString(content);
+    const str = try env.newString(content);
     try testing.expect(str != null);
     defer env.deleteReference(.local, str);
 
-    var len = env.getStringLength(str);
+    const len = env.getStringLength(str);
     try testing.expectEqual(content.len, @as(usize, @intCast(len)));
 
     var ret = try env.getStringChars(str);
@@ -2978,14 +2978,14 @@ test "string unicode: newString, getStringLength, getStringChars and releaseStri
 }
 
 test "string utf: newStringUTF, getStringUTFLength, getStringUTFChars and releaseStringUTFChars" {
-    var env = getTestingJNIEnv();
+    const env = getTestingJNIEnv();
 
     const content = "Hello utf8";
-    var str = try env.newStringUTF(content);
+    const str = try env.newStringUTF(content);
     try testing.expect(str != null);
     defer env.deleteReference(.local, str);
 
-    var len = env.getStringUTFLength(str);
+    const len = env.getStringUTFLength(str);
     try testing.expectEqual(content.len, @as(usize, @intCast(len)));
 
     var ret = try env.getStringUTFChars(str);
@@ -2998,11 +2998,11 @@ test "getStringRegion" {
     var env = getTestingJNIEnv();
 
     const content = std.unicode.utf8ToUtf16LeStringLiteral("ABCDEFGHIJKLMNOPQRSTUVXYZ");
-    var str = try env.newString(content);
+    const str = try env.newString(content);
     try testing.expect(str != null);
     defer env.deleteReference(.local, str);
 
-    var buff: [10]u16 = undefined;
+    const buff: [10]u16 = undefined;
     try env.getStringRegion(str, 5, 10, &buff);
 
     try testing.expectEqualSlices(u16, content[5..][0..10], &buff);
@@ -3012,7 +3012,7 @@ test "getStringUTFRegion" {
     var env = getTestingJNIEnv();
 
     const content = "ABCDEFGHIJKLMNOPQRSTUVXYZ";
-    var str = try env.newStringUTF(content);
+    const str = try env.newStringUTF(content);
     try testing.expect(str != null);
     defer env.deleteReference(.local, str);
 
@@ -3026,11 +3026,11 @@ test "getStringCritical" {
     var env = getTestingJNIEnv();
 
     const content = std.unicode.utf8ToUtf16LeStringLiteral("ABCDEFGHIJKLMNOPQRSTUVXYZ");
-    var str = try env.newString(content);
+    const str = try env.newString(content);
     try testing.expect(str != null);
     defer env.deleteReference(.local, str);
 
-    var len = env.getStringLength(str);
+    const len = env.getStringLength(str);
     try testing.expectEqual(content.len, @as(usize, @intCast(len)));
 
     var region = try env.getStringCritical(str);
@@ -3042,18 +3042,18 @@ test "getStringCritical" {
 test "getDirectBufferAddress" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var getDirectBufferMethodId = try env.getStaticMethodId(testClass, "getDirectBuffer", "()Ljava/nio/ByteBuffer;");
+    const getDirectBufferMethodId = try env.getStaticMethodId(testClass, "getDirectBuffer", "()Ljava/nio/ByteBuffer;");
     try testing.expect(getDirectBufferMethodId != null);
 
-    var buffer = try env.callStaticMethod(.object, testClass, getDirectBufferMethodId, null);
+    const buffer = try env.callStaticMethod(.object, testClass, getDirectBufferMethodId, null);
     try testing.expect(buffer != null);
     defer env.deleteReference(.local, buffer);
 
-    var direct_buffer = env.getDirectBufferAddress(buffer);
+    const direct_buffer = env.getDirectBufferAddress(buffer);
     try testing.expectEqual(@as(usize, 32), direct_buffer.len);
 
     // Asserting
@@ -3073,10 +3073,10 @@ test "getDirectBufferAddress" {
             byte.* = value;
         }
 
-        var checkReversedBufferMethodId = try env.getStaticMethodId(testClass, "checkReversedBuffer", "(Ljava/nio/ByteBuffer;)Z");
+        const checkReversedBufferMethodId = try env.getStaticMethodId(testClass, "checkReversedBuffer", "(Ljava/nio/ByteBuffer;)Z");
         try testing.expect(checkReversedBufferMethodId != null);
 
-        var valid = try env.callStaticMethod(.boolean, testClass, checkReversedBufferMethodId, &[_]jvalue{jvalue.toJValue(buffer)});
+        const valid = try env.callStaticMethod(.boolean, testClass, checkReversedBufferMethodId, &[_]jvalue{jvalue.toJValue(buffer)});
         try testing.expectEqual(@as(jboolean, 1), valid);
     }
 }
@@ -3085,7 +3085,7 @@ test "newDirectByteBuffer" {
     var env = getTestingJNIEnv();
 
     var direct_buffer = blk: {
-        var array: [32]u8 = undefined;
+        const array: [32]u8 = undefined;
         var value: u8 = 32;
         for (array) |*byte| {
             value -= 1;
@@ -3094,29 +3094,29 @@ test "newDirectByteBuffer" {
         break :blk array;
     };
 
-    var buffer = try env.newDirectByteBuffer(&direct_buffer, direct_buffer.len);
+    const buffer = try env.newDirectByteBuffer(&direct_buffer, direct_buffer.len);
     try testing.expect(buffer != null);
     defer env.deleteReference(.local, buffer);
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var checkReversedBufferMethodId = try env.getStaticMethodId(testClass, "checkReversedBuffer", "(Ljava/nio/ByteBuffer;)Z");
+    const checkReversedBufferMethodId = try env.getStaticMethodId(testClass, "checkReversedBuffer", "(Ljava/nio/ByteBuffer;)Z");
     try testing.expect(checkReversedBufferMethodId != null);
 
-    var valid = try env.callStaticMethod(.boolean, testClass, checkReversedBufferMethodId, &[_]jvalue{jvalue.toJValue(buffer)});
+    const valid = try env.callStaticMethod(.boolean, testClass, checkReversedBufferMethodId, &[_]jvalue{jvalue.toJValue(buffer)});
     try testing.expectEqual(@as(jboolean, 1), valid);
 }
 
 test "newObjectArray, setObjectArrayElement and getObjectArrayElement" {
     var env = getTestingJNIEnv();
 
-    var testClass = try env.findClass("com/jui/TypesTest");
+    const testClass = try env.findClass("com/jui/TypesTest");
     try testing.expect(testClass != null);
     defer env.deleteReference(.local, testClass);
 
-    var array = try env.newObjectArray(32, testClass, null);
+    const array = try env.newObjectArray(32, testClass, null);
     try testing.expect(array != null);
     defer env.deleteReference(.local, array);
 
@@ -3133,12 +3133,12 @@ test "newObjectArray, setObjectArrayElement and getObjectArrayElement" {
     }
 
     {
-        var ctor = try env.getMethodId(testClass, "<init>", "(I)V");
+        const ctor = try env.getMethodId(testClass, "<init>", "(I)V");
         try testing.expect(ctor != null);
 
         var index: u32 = 0;
         while (index < 32) : (index += 1) {
-            var obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jint, @intCast(index)))});
+            const obj = try env.newObject(testClass, ctor, &[_]jvalue{jvalue.toJValue(@as(jint, @intCast(index)))});
             try testing.expect(obj != null);
             defer env.deleteReference(.local, obj);
 
@@ -3147,16 +3147,16 @@ test "newObjectArray, setObjectArrayElement and getObjectArrayElement" {
     }
 
     {
-        var fieldId = try env.getFieldId(testClass, "intValue", "I");
+        const fieldId = try env.getFieldId(testClass, "intValue", "I");
         try testing.expect(fieldId != null);
 
         var index: u32 = 0;
         while (index < 32) : (index += 1) {
-            var obj = try env.getObjectArrayElement(array, @as(jint, @intCast(index)));
+            const obj = try env.getObjectArrayElement(array, @as(jint, @intCast(index)));
             try testing.expect(obj != null);
             defer env.deleteReference(.local, obj);
 
-            var value = env.getField(.int, obj, fieldId);
+            const value = env.getField(.int, obj, fieldId);
             try testing.expectEqual(index, @as(u32, @intCast(value)));
         }
     }
@@ -3188,11 +3188,11 @@ test "newPrimitiveArray, getArrayLength, getPrimitiveArrayElements" {
         pub fn action(comptime native_type: NativeType) !void {
             var env = getTestingJNIEnv();
 
-            var array = try env.newPrimitiveArray(native_type, 32);
+            const array = try env.newPrimitiveArray(native_type, 32);
             try testing.expect(array != null);
             defer env.deleteReference(.local, array);
 
-            var len = env.getArrayLength(array);
+            const len = env.getArrayLength(array);
             try testing.expectEqual(@as(jsize, @intCast(32)), len);
 
             // Change the array
@@ -3200,7 +3200,7 @@ test "newPrimitiveArray, getArrayLength, getPrimitiveArrayElements" {
                 var ret = try env.getPrimitiveArrayElements(native_type, array);
                 defer env.releasePrimitiveArrayElements(native_type, array, ret.elements, .default);
 
-                var elements = ret.elements[0..@as(usize, @intCast(len))];
+                const elements = ret.elements[0..@as(usize, @intCast(len))];
                 for (elements, 0..) |*element, i| {
                     try testing.expectEqual(cast(native_type, 0), element.*);
                     element.* = cast(native_type, i);
@@ -3212,7 +3212,7 @@ test "newPrimitiveArray, getArrayLength, getPrimitiveArrayElements" {
                 var ret = try env.getPrimitiveArrayElements(native_type, array);
                 defer env.releasePrimitiveArrayElements(native_type, array, ret.elements, .default);
 
-                var elements = ret.elements[0..@as(usize, @intCast(len))];
+                const elements = ret.elements[0..@as(usize, @intCast(len))];
                 for (elements, 0..) |element, i| {
                     try testing.expectEqual(cast(native_type, i), element);
                 }
@@ -3277,7 +3277,7 @@ test "newPrimitiveArray, getArrayLength, getPrimitiveArrayElements" {
                 var critical = try env.getPrimitiveArrayCritical(native_type, array);
                 defer env.releasePrimitiveArrayCritical(native_type, array, critical.region, .default);
 
-                var elements = critical.region[0..@as(usize, @intCast(len))];
+                const elements = critical.region[0..@as(usize, @intCast(len))];
                 for (elements, 0..) |*element, i| {
                     element.* = cast(native_type, i + 10);
                 }
@@ -3288,7 +3288,7 @@ test "newPrimitiveArray, getArrayLength, getPrimitiveArrayElements" {
                 var critical = try env.getPrimitiveArrayCritical(native_type, array);
                 defer env.releasePrimitiveArrayCritical(native_type, array, critical.region, .default);
 
-                var elements = critical.region[0..@as(usize, @intCast(len))];
+                const elements = critical.region[0..@as(usize, @intCast(len))];
                 for (elements, 0..) |element, i| {
                     try testing.expectEqual(cast(native_type, i + 10), element);
                 }

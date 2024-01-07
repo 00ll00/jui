@@ -94,7 +94,7 @@ pub const Descriptor = union(enum) {
 
             .object => |o| {
                 var i: usize = 0;
-                var tc = std.mem.count(u8, o, "/");
+                const tc = std.mem.count(u8, o, "/");
                 var t = std.mem.tokenize(u8, o, "/");
                 while (t.next()) |z| : (i += 1) {
                     _ = try writer.writeAll(z);
@@ -114,7 +114,7 @@ pub const Descriptor = union(enum) {
         try self.humanStringify(buf.writer());
     }
 
-    pub fn humanStringifyConst(self: Self) ![]const u8{
+    pub fn humanStringifyConst(self: Self) ![]const u8 {
         return switch (self) {
             .byte => "byte",
             .char => "char",
@@ -144,13 +144,13 @@ pub const Descriptor = union(enum) {
 };
 
 fn c(allocator: std.mem.Allocator, d: Descriptor) !*Descriptor {
-    var x = try allocator.create(Descriptor);
+    const x = try allocator.create(Descriptor);
     x.* = d;
     return x;
 }
 
 fn parse_(allocator: std.mem.Allocator, reader: anytype) anyerror!?*Descriptor {
-    var kind = try reader.readByte();
+    const kind = try reader.readByte();
     switch (kind) {
         'B' => return try c(allocator, .byte),
         'C' => return try c(allocator, .char),
@@ -167,12 +167,12 @@ fn parse_(allocator: std.mem.Allocator, reader: anytype) anyerror!?*Descriptor {
         'V' => return try c(allocator, .void),
 
         'L' => {
-            var x = try allocator.create(Descriptor);
+            const x = try allocator.create(Descriptor);
             x.* = .{ .object = try reader.readUntilDelimiterAlloc(allocator, ';', 256) };
             return x;
         },
         '[' => {
-            var x = try allocator.create(Descriptor);
+            const x = try allocator.create(Descriptor);
             x.* = .{ .array = try parse(allocator, reader) };
             return x;
         },
@@ -184,9 +184,9 @@ fn parse_(allocator: std.mem.Allocator, reader: anytype) anyerror!?*Descriptor {
                 try params.append(k);
             }
 
-            var returnd = (try parse_(allocator, reader)).?;
+            const returnd = (try parse_(allocator, reader)).?;
 
-            var x = try allocator.create(Descriptor);
+            const x = try allocator.create(Descriptor);
             x.* = if (jui.is_zig_master) .{
                 .method = .{
                     .parameters = try params.toOwnedSlice(),
@@ -216,7 +216,7 @@ pub fn parseString(allocator: std.mem.Allocator, string: []const u8) !*Descripto
 }
 
 test "Descriptors: Write/parse 3D array of objects" {
-    var test_string = "[[[Ljava/lang/Object;";
+    const test_string = "[[[Ljava/lang/Object;";
 
     var object = Descriptor{ .object = "java/lang/Object" };
     var array1 = Descriptor{ .array = &object };
@@ -239,7 +239,7 @@ test "Descriptors: Write/parse 3D array of objects" {
 }
 
 test "Descriptors: Write/parse method that returns an object and accepts an integer, double, and Thread" {
-    var test_string = "(IDLjava/lang/Thread;)Ljava/lang/Object;";
+    const test_string = "(IDLjava/lang/Thread;)Ljava/lang/Object;";
 
     var int = Descriptor{ .int = {} };
     var double = Descriptor{ .double = {} };

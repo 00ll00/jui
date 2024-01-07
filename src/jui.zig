@@ -113,7 +113,7 @@ pub fn wrapErrors(function: anytype, args: anytype) splitError(@typeInfo(@TypeOf
 
     if (se.error_set) |_| {
         return @call(.auto, function, args) catch |err| {
-            var maybe_ert = @errorReturnTrace();
+            const maybe_ert = @errorReturnTrace();
             if (maybe_ert) |ert| {
                 var err_buf = std.ArrayList(u8).init(std.heap.page_allocator);
                 defer err_buf.deinit();
@@ -125,7 +125,7 @@ pub fn wrapErrors(function: anytype, args: anytype) splitError(@typeInfo(@TypeOf
                 env.throwGeneric(@as([*c]const u8, @ptrCast(err_buf.items))) catch unreachable;
             } else {
                 var buf: [512]u8 = undefined;
-                var msg = std.fmt.bufPrintZ(&buf, "{s}", .{@errorName(err)}) catch unreachable;
+                const msg = std.fmt.bufPrintZ(&buf, "{s}", .{@errorName(err)}) catch unreachable;
                 env.throwGeneric(msg) catch unreachable;
             }
 

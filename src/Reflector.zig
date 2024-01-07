@@ -35,7 +35,7 @@ pub const String = struct {
     string: types.jstring,
 
     pub fn init(reflector: *Reflector, chars: StringChars) !Self {
-        var string = try switch (chars) {
+        const string = try switch (chars) {
             .utf8 => |buf| reflector.env.newStringUTF(@ptrCast(buf)),
             .unicode => |buf| reflector.env.newString(buf),
         };
@@ -57,7 +57,7 @@ pub const String = struct {
     }
 
     pub fn fromObject(reflector: *Reflector, object: types.jobject) !Self {
-        var chars_len = reflector.env.getStringUTFLength(object);
+        const chars_len = reflector.env.getStringUTFLength(object);
         var chars_ret = try reflector.env.getStringUTFChars(object);
 
         return Self{ .reflector = reflector, .chars = .{ .utf8 = std.meta.assumeSentinel(chars_ret.chars[0..@intCast(chars_len)], 0) }, .string = object };
@@ -285,7 +285,7 @@ pub fn Method(descriptor: descriptors.MethodDescriptor) type {
                 processed_args[index] = types.jvalue.toJValue(args[index]);
             }
 
-            var ret = try self.callJValues(object.object, &processed_args);
+            const ret = try self.callJValues(object.object, &processed_args);
             const mdt = MapDescriptorType(descriptor.return_type);
             return if (@typeInfo(mdt) == .Struct and @hasDecl(mdt, "fromJValue")) @field(mdt, "fromJValue")(self.class.reflector, .{ .l = ret }) else ret;
         }
@@ -311,7 +311,7 @@ pub fn StaticMethod(descriptor: descriptors.MethodDescriptor) type {
                 processed_args[index] = types.jvalue.toJValue(args[index]);
             }
 
-            var ret = try self.callJValues(&processed_args);
+            const ret = try self.callJValues(&processed_args);
             const mdt = MapDescriptorType(descriptor.return_type);
             return if (@typeInfo(mdt) == .Struct and @hasDecl(mdt, "fromJValue")) @field(mdt, "fromJValue")(self.class.reflector, .{ .l = ret }) else ret;
         }
