@@ -22,7 +22,7 @@ pub fn exportAs(comptime name: []const u8, function: anytype) void {
         else => v,
     };
 
-    @export(function, .{ .name = "Java_" ++ &z, .linkage = .Strong });
+    @export(function, .{ .name = "Java_" ++ &z, .linkage = .strong });
 }
 
 pub fn exportUnder(comptime class_name: []const u8, functions: anytype) void {
@@ -30,9 +30,9 @@ pub fn exportUnder(comptime class_name: []const u8, functions: anytype) void {
         const z = @field(functions, field.name);
 
         if (std.mem.eql(u8, field.name, "onLoad"))
-            @export(z, .{ .name = "JNI_OnLoad", .linkage = .Strong })
+            @export(z, .{ .name = "JNI_OnLoad", .linkage = .strong })
         else if (std.mem.eql(u8, field.name, "onUnload"))
-            @export(z, .{ .name = "JNI_OnUnload", .linkage = .Strong })
+            @export(z, .{ .name = "JNI_OnUnload", .linkage = .strong })
         else
             exportAs(class_name ++ "." ++ field.name, z);
     }

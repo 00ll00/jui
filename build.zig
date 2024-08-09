@@ -105,11 +105,11 @@ pub fn build(b: *std.build.Builder) void {
                 pub extern "kernel32" fn SetDllDirectoryA(path: [*:0]const u8) callconv(.C) std.os.windows.BOOL;
             }.SetDllDirectoryA;
 
-            var java_bin_path = std.fs.path.joinZ(b.allocator, &.{ java_home, "\\bin" }) catch unreachable;
+            const java_bin_path = std.fs.path.joinZ(b.allocator, &.{ java_home, "\\bin" }) catch unreachable;
             defer b.allocator.free(java_bin_path);
             _ = setDllDirectory(java_bin_path);
 
-            var java_bin_server_path = std.fs.path.joinZ(b.allocator, &.{ java_home, "\\bin\\server" }) catch unreachable;
+            const java_bin_server_path = std.fs.path.joinZ(b.allocator, &.{ java_home, "\\bin\\server" }) catch unreachable;
             defer b.allocator.free(java_bin_server_path);
             _ = setDllDirectory(java_bin_server_path);
 
