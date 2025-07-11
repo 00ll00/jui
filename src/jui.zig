@@ -15,7 +15,7 @@ pub const is_stage2 = @hasDecl(builtin, "zig_backend") and builtin.zig_backend !
 
 pub usingnamespace types;
 
-pub fn exportAs(comptime name: []const u8, function: anytype) void {
+pub fn exportAs(comptime name: []const u8, function: *const anyopaque) void {
     var z: [name.len]u8 = undefined;
     for (name, 0..) |v, i| z[i] = switch (v) {
         '.' => '_',
@@ -34,7 +34,7 @@ pub fn exportUnder(comptime class_name: []const u8, functions: anytype) void {
         else if (std.mem.eql(u8, field.name, "onUnload"))
             @export(z, .{ .name = "JNI_OnUnload", .linkage = .strong })
         else
-            exportAs(class_name ++ "." ++ field.name, z);
+            exportAs(class_name ++ "." ++ field.name, &z);
     }
 }
 
@@ -95,14 +95,14 @@ fn formatStackTraceJava(writer: anytype, trace: std.builtin.StackTrace) !void {
 
 fn splitError(comptime T: type) struct { error_set: ?type = null, payload: type } {
     return switch (@typeInfo(T)) {
-        .ErrorUnion => |u| .{ .error_set = u.error_set, .payload = u.payload },
+        .error_union => |u| .{ .error_set = u.error_set, .payload = u.payload },
         else => .{ .payload = T },
     };
 }
 
 /// NOTE: This is sadly required as @Type for Fn is not implemented so we cannot autowrap functions
-pub fn wrapErrors(function: anytype, args: anytype) splitError(@typeInfo(@TypeOf(function)).Fn.return_type.?).payload {
-    const se = splitError(@typeInfo(@TypeOf(function)).Fn.return_type.?);
+pub fn wrapErrors(function: anytype, args: anytype) splitError(@typeInfo(@TypeOf(function)).@"fn".return_type.?).payload {
+    const se = splitError(@typeInfo(@TypeOf(function)).@"fn".return_type.?);
     var env: *types.JNIEnv = undefined;
 
     switch (@TypeOf(args[0])) {
