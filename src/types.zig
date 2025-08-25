@@ -61,7 +61,7 @@ const cpu_bit_count = builtin.target.cpu.arch.ptrBitWidth();
 // sources for every combo and manually extract the file
 
 // pub const JNICALL: builtin.CallingConvention = .Stdcall;
-pub const JNICALL: std.builtin.CallingConvention = if (builtin.target.os.tag == .windows) std.os.windows.WINAPI else .C;
+pub const JNICALL: std.builtin.CallingConvention = if (builtin.target.os.tag == .windows) .winapi else .C;
 
 pub const jint = switch (os) {
     .windows => c_long,
